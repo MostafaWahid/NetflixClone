@@ -1,164 +1,133 @@
 # Netflix Clone
 
-A responsive Netflix-style UI and streaming catalogue built as a learning / demo project. This repository implements a movie/TV browsing experience similar to Netflix: browsing lists, viewing details, searching, and playing trailers.
+A Netflix-style movie/TV browsing demo with a React + Vite frontend and an Express + MongoDB backend. The app fetches movie and TV data from The Movie Database (TMDB) and provides user authentication, search, watch/trailer pages, and a responsive UI built with Tailwind CSS.
 
-> NOTE: This README is a template. Replace placeholders (marked with <...>) with values specific to your project (tech stack, commands, API keys, screenshots, etc.). I can scan the repo and fill these automatically if you want.
+This README was created by inspecting the repository and filled with the actual stack, important env vars, and run instructions.
 
 ## Table of Contents
 
 - [Demo](#demo)
 - [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Screenshots](#screenshots)
-- [Getting Started](#getting-started)
-  - [Prerequisites](#prerequisites)
-  - [Installation](#installation)
-  - [Environment variables](#environment-variables)
-  - [Running locally](#running-locally)
-- [Project Structure](#project-structure)
-- [Scripts](#scripts)
-- [Deployment](#deployment)
+- [Tech stack](#tech-stack)
+- [Repository layout](#repository-layout)
+- [Prerequisites](#prerequisites)
+- [Environment variables](#environment-variables)
+- [Local development (run frontend & backend)](#local-development-run-frontend--backend)
+- [Running a production build](#running-a-production-build)
+- [Common troubleshooting](#common-troubleshooting)
 - [Contributing](#contributing)
-- [License](#license)
-- [Contact](#contact)
+- [License & contact](#license--contact)
 
 ## Demo
 
-Live demo: <Add demo URL here, if hosted>
+No public demo URL provided. You can run locally (instructions below).
 
 ## Features
 
-- Responsive Netflix-like UI
-- Browse categories / lists of movies and TV shows
-- Search for titles
-- Movie/TV detail view with overview, rating, and trailer
-- Play trailers (YouTube / embedded)
-- User authentication (if implemented)
-- Favorites / watchlist (if implemented)
-- Responsive on mobile, tablet and desktop
+- Responsive Netflix-style UI
+- Browse trending movies / TV shows and category sliders
+- Search movies/TV/people and view search history
+- Watch/trailer page with embedded player
+- User authentication using JWT stored in an httpOnly cookie
+- Backend middlewares for protected routes
+- Uses TMDB API for content data and TMDB image endpoints for covers/posters
 
-## Tech Stack
+## Tech stack
 
-- Frontend: <React / Next.js / Vue / Angular — replace this>
-- Styling: <Tailwind / CSS Modules / Styled Components / plain CSS>
-- API: <TMDB API or custom backend>
-- Auth & DB: <Firebase / Supabase / Custom / None>
-- Bundler: <Vite / Create React App / Webpack / Next.js>
+- Frontend
+  - React (JSX) with Vite
+  - Tailwind CSS
+  - React Router
+  - Zustand (state)
+  - axios for HTTP
+  - react-hot-toast, lucide-react, react-player, etc.
+- Backend
+  - Node.js + Express
+  - MongoDB via Mongoose
+  - JWT authentication (token set in httpOnly cookie)
+  - dotenv, cookie-parser, axios (for TMDB requests)
+- External APIs
+  - The Movie Database (TMDB) — backend uses a Bearer token to call TMDB
+- Dev tooling
+  - Vite for frontend
+  - ESLint config present for frontend
 
-Replace the items above with the actual technologies used in this repository.
+## Repository layout (important folders)
 
-## Screenshots
+- frontend/ — React + Vite app
+  - src/ — React components, pages, store, utils
+  - vite.config.js, index.html
+- backend/ — Express server
+  - index.js — server entry
+  - config/ — envVars and DB connect
+  - controllers/, routes/, services/, middlewares/, models/
+- README.md — this file
 
-Add screenshots to show the UI:
+## Prerequisites
 
-- `./screenshots/home.png`
-- `./screenshots/detail.png`
-- `./screenshots/search.png`
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js >= 16 (or the version used in the project)
+- Node.js (v16+ recommended)
 - npm or yarn
-- (Optional) A TMDB API key or other API keys if the app fetches movie data
+- MongoDB (atlas or local) for persistent data
+- TMDB API token (v4 Bearer token recommended) — used by backend
 
-### Installation
+## Environment variables
 
-1. Clone the repo
+Create a `.env` file in the backend folder (backend/.env). Minimum variables used by the backend:
+
+```
+MONGO_URI=<your_mongodb_connection_string>
+PORT=5000
+JWT_SECRET=<a_long_random_secret_for_jwt>
+TMDB_API_KEY=<your_tmdb_bearer_token_or_api_key>
+NODE_ENV=development
+```
+
+Notes:
+- The backend uses `Authorization: Bearer <TMDB_API_KEY>` when calling TMDB (see backend/services/tmdb.service.js). Use the TMDB v4 read access token (starts with `Bearer ...`) or a proper API token per TMDB docs.
+- `MONGO_URI` can be a MongoDB Atlas connection string or a local mongodb://... URL.
+- If you add any frontend-specific env vars (e.g., VITE_API_URL), put them in `frontend/.env` using the `VITE_` prefix (Vite requirement).
+
+## Local development (run frontend & backend)
+
+Open two terminals (one for backend, one for frontend).
+
+1. Clone the repository and install top-level deps if any:
    git clone https://github.com/MostafaWahid/NetflixClone.git
    cd NetflixClone
 
-2. Install dependencies
+2. Backend
+   cd backend
    npm install
+   # create backend/.env (see env vars above)
+   # Start backend
+   npm run dev
+   # If `dev` is not defined, try:
+   # node index.js
    # or
-   yarn install
+   # npx nodemon index.js
 
-### Environment variables
+   The backend listens on the PORT from env (default 5000). API base path is `/api/v1/*`.
 
-Create a `.env` file in the project root with required environment variables. Example:
+3. Frontend
+   cd ../frontend
+   npm install
+   npm run dev
 
-REACT_APP_TMDB_API_KEY=<your_tmdb_api_key>
-NEXT_PUBLIC_TMDB_API_KEY=<your_tmdb_api_key>
+   Vite dev server runs (default port 5173). The frontend currently makes axios calls to relative `/api/v1/...` endpoints. When frontend and backend are on different ports in development, do one of the following:
+   - Add a proxy in Vite config to forward `/api` to the backend (recommended), e.g. in `frontend/vite.config.js`:
+     ```
+     // add server.proxy: { '/api': 'http://localhost:5000' }
+     ```
+   - Or set an env variable in `frontend/.env` (e.g. `VITE_API_URL=http://localhost:5000`) and set axios baseURL at app start:
+     ```js
+     // frontend/src/main.jsx (example)
+     import axios from 'axios'
+     axios.defaults.baseURL = import.meta.env.VITE_API_URL || ''
+     ```
+   - Alternatively, build the frontend and serve the static files from the backend (production flow).
 
-If the project uses Firebase:
-FIREBASE_API_KEY=<...>
-FIREBASE_AUTH_DOMAIN=<...>
-FIREBASE_PROJECT_ID=<...>
+4. Open the frontend URL printed by Vite (usually http://localhost:5173) and sign up / log in to use protected routes.
 
-Replace the above with the environment variables the project requires.
 
-### Running locally
 
-Start the dev server:
 
-npm run dev
-# or
-npm start
-
-Open http://localhost:3000 (or the port specified by the project).
-
-## Project Structure
-
-A typical structure (adjust to match the repo):
-
-- public/ — static assets
-- src/
-  - components/ — reusable UI components
-  - pages/ or routes/ — page views (if Next.js / React Router)
-  - styles/ — global styles
-  - services/ — API clients
-  - hooks/ — custom React hooks
-  - utils/ — helper functions
-- .env — environment variables (not checked in)
-- package.json — scripts & dependencies
-
-## Scripts
-
-Common scripts (update to match package.json):
-
-- npm run dev — start dev server
-- npm start — start production server
-- npm run build — build for production
-- npm run lint — run linter
-- npm test — run tests
-
-## Deployment
-
-Deploy to any static host or Node host:
-
-- Vercel (recommended for Next.js)
-- Netlify
-- GitHub Pages (for static builds)
-- Firebase Hosting
-
-Add build & deploy instructions specific to your chosen host.
-
-## Contributing
-
-Contributions are welcome! Suggested workflow:
-
-1. Fork the repo
-2. Create a feature branch: git checkout -b feature/name
-3. Make changes and run tests/lint
-4. Create a PR describing your change
-
-Please follow the existing code style and include tests or screenshots for UI changes.
-
-## License
-
-Specify license here, for example:
-
-This project is licensed under the MIT License. See the [LICENSE](./LICENSE) file for details.
-
-## Contact
-
-Maintainer: MostafaWahid  
-Project: NetflixClone  
-GitHub: https://github.com/MostafaWahid/NetflixClone
-
----
-
-If you want, I can now:
-- Inspect the repository files and update this README with exact tech, commands, required env vars, and screenshots (recommended).
-- Commit this README.md to the repository (tell me which branch to push to).
